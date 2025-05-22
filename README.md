@@ -18,7 +18,7 @@ This Go application connects to running Docker containers, streams their logs, a
 
 2.  **Initialize Go Module (if not already done):**
     ```bash
-    go mod init bw_log_collector
+    go mod init bw_util
     ```
 
 3.  **Install Dependencies:**
@@ -31,12 +31,12 @@ This Go application connects to running Docker containers, streams their logs, a
 
 1.  **Build the application:**
     ```bash
-    go build -o docker-log-collector
+    go build -o docker-util
     ```
 
 2.  **Run the application:**
     ```bash
-    ./docker-log-collector
+    ./docker-util
     ```
     The application will create an SQLite database file named `docker_logs.db` in the same directory and start collecting logs from all running containers.
 
