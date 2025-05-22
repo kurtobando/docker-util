@@ -1,6 +1,14 @@
-# Docker Log Collector to SQLite
+# Docker Log Collector to SQLite with Web UI
 
-This Go application connects to running Docker containers, streams their logs in real-time, and stores them in an SQLite database. It supports graceful shutdown to ensure data integrity and allows configuration of the database path.
+This Go application connects to running Docker containers, streams their logs in real-time, and stores them in an SQLite database. It supports graceful shutdown, allows configuration of the database path, and provides a simple web interface to view the collected logs.
+
+## Features
+
+- Real-time log streaming from all running Docker containers.
+- Log storage in an SQLite database.
+- Configurable database path via `--dbpath` flag.
+- Graceful shutdown on SIGINT/SIGTERM.
+- **Web UI to view collected logs (served on `http://localhost:8080` by default).**
 
 ## Prerequisites
 
@@ -38,11 +46,16 @@ This Go application connects to running Docker containers, streams their logs in
     ```bash
     ./docker-util [options]
     ```
-    The application will create an SQLite database file (defaults to `./docker_logs.db` if not specified) and start collecting logs from all running containers.
+    The application will:
+    - Create/use an SQLite database file (defaults to `./docker_logs.db`).
+    - Start collecting logs from all running containers.
+    - **Start a web server on `http://localhost:8080`. Open this URL in your browser to view logs.**
 
     **Options:**
     *   `--dbpath <path>`: Specifies the path for the SQLite database file.
         Example: `./docker-util --dbpath /var/log/docker_app_logs.sqlite`
+    *   `--port <port_number>`: Specifies the port for the web UI (defaults to 8080).
+        Example: `./docker-util --port 8888`
 
 ## Database Schema
 
@@ -58,4 +71,4 @@ The logs are stored in a table named `logs` with the following schema:
 ## Development
 
 -   Ensure Docker daemon is accessible.
--   Run `go run main.go` for development (you can also pass flags: `go run main.go --dbpath ./custom_dev.db`). 
+-   Run `go run main.go` for development (you can also pass flags: `go run main.go --dbpath ./custom_dev.db --port 8081`). 

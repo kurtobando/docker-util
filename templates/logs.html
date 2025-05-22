@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Logs - {{ .DBPath }}</title>
+    <!-- Pico.css CDN for minimalist styling -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 1rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            word-break: break-word; /* Break long words/IDs */
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .container-id {
+            font-family: monospace;
+            font-size: 0.85em;
+        }
+        .log-message {
+             white-space: pre-wrap; /* Preserve whitespace and newlines in log messages */
+        }
+        footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>Docker Container Logs</h1>
+            <p>Displaying latest logs from: <code>{{ .DBPath }}</code></p>
+        </header>
+
+        <figure>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Container Name</th>
+                        <th>ID</th>
+                        <th>Stream</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Logs}}
+                    <tr>
+                        <td>{{.Timestamp}}</td>
+                        <td>{{.ContainerName}}</td>
+                        <td class="container-id">{{.ContainerID}}</td>
+                        <td>{{.StreamType}}</td>
+                        <td class="log-message">{{.LogMessage}}</td>
+                    </tr>
+                    {{else}}
+                    <tr>
+                        <td colspan="5" style="text-align: center;">No logs found or database is empty.</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </figure>
+        <footer>
+            <p>docker-util log viewer</p>
+        </footer>
+    </main>
+</body>
+</html> 
