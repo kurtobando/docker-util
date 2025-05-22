@@ -44,7 +44,7 @@ type LogEntry struct {
 
 func init() {
 	flag.StringVar(&dbName, "dbpath", "./docker_logs.db", "Path to the SQLite database file.")
-	flag.StringVar(&serverPort, "port", "8080", "Port for the web UI.")
+	flag.StringVar(&serverPort, "port", "9123", "Port for the web UI.")
 }
 
 func initDB() error {

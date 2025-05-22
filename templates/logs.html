@@ -4,80 +4,97 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Docker Logs - {{ .DBPath }}</title>
-    <!-- Pico.css CDN for minimalist styling -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Optional: You can configure Tailwind CSS further if needed
+        // See: https://tailwindcss.com/docs/installation/play-cdn#configuring-tailwind-css
+        tailwind.config = {
+            theme: {
+                extend: {
+                    // custom configurations
+                }
+            }
+        }
+    </script>
     <style>
-        body {
-            font-family: sans-serif;
-            padding: 1rem;
+        /* Custom scrollbar for webkit browsers for better aesthetics with dark mode if implemented */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; /* Light grey track */
         }
-        th, td {
-            padding: 0.5rem;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-            word-break: break-word; /* Break long words/IDs */
+        ::-webkit-scrollbar-thumb {
+            background: #888; /* Darker grey thumb */
+            border-radius: 4px;
         }
-        th {
-            background-color: #f4f4f4;
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555; /* Darken thumb on hover */
         }
-        .container-id {
-            font-family: monospace;
-            font-size: 0.85em;
-        }
-        .log-message {
-             white-space: pre-wrap; /* Preserve whitespace and newlines in log messages */
-        }
-        footer {
-            margin-top: 2rem;
-            text-align: center;
-            font-size: 0.9em;
-            color: #777;
-        }
+        /* Basic dark mode support - can be expanded */
+        /* @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a202c; 
+                color: #cbd5e0;
+            }
+            table thead th {
+                 background-color: #2d3748; 
+            }
+            table tbody tr td {
+                border-color: #4a5568;
+            }
+        } */
     </style>
 </head>
-<body>
-    <main class="container">
-        <header>
-            <h1>Docker Container Logs</h1>
-            <p>Displaying latest logs from: <code>{{ .DBPath }}</code></p>
+<body class="bg-gray-100 text-gray-800 antialiased min-h-screen">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-700">Docker Container Logs</h1>
+            <p class="text-gray-600 mt-2">Displaying latest logs from: <code class="px-2 py-1 bg-gray-200 text-sm rounded">{{ .DBPath }}</code></p>
         </header>
 
-        <figure>
-            <table>
-                <thead>
+        <div class="overflow-x-auto bg-white shadow-md rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
                     <tr>
-                        <th>Timestamp</th>
-                        <th>Container Name</th>
-                        <th>ID</th>
-                        <th>Stream</th>
-                        <th>Message</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Timestamp</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Container Name</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stream</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="bg-white divide-y divide-gray-200">
                     {{range .Logs}}
                     <tr>
-                        <td>{{.Timestamp}}</td>
-                        <td>{{.ContainerName}}</td>
-                        <td class="container-id">{{.ContainerID}}</td>
-                        <td>{{.StreamType}}</td>
-                        <td class="log-message">{{.LogMessage}}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{.Timestamp}}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-medium">{{.ContainerName}}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 font-mono">{{.ContainerID}}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {{if eq .StreamType "stdout"}} bg-blue-100 text-blue-800 
+                                {{else if eq .StreamType "stderr"}} bg-red-100 text-red-800 
+                                {{else}} bg-gray-100 text-gray-800 {{end}}">
+                                {{.StreamType}}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap break-all">{{.LogMessage}}</td>
                     </tr>
                     {{else}}
                     <tr>
-                        <td colspan="5" style="text-align: center;">No logs found or database is empty.</td>
+                        <td colspan="5" class="px-6 py-12 text-center text-sm text-gray-500">
+                            No logs found or database is empty.
+                        </td>
                     </tr>
                     {{end}}
                 </tbody>
             </table>
-        </figure>
-        <footer>
+        </div>
+
+        <footer class="mt-12 text-center text-sm text-gray-500">
             <p>docker-util log viewer</p>
         </footer>
-    </main>
+    </div>
 </body>
 </html> 
