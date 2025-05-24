@@ -11,8 +11,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -101,15 +103,34 @@ func serveLogsPage(w http.ResponseWriter, r *http.Request) {
 	// Get search query parameter
 	searchQuery := strings.TrimSpace(r.URL.Query().Get("search"))
 
+	// Get page parameter (default to 1)
+	pageStr := r.URL.Query().Get("page")
+	currentPage := 1
+	if pageStr != "" {
+		if parsedPage, err := strconv.Atoi(pageStr); err == nil && parsedPage >= 1 {
+			currentPage = parsedPage
+		}
+	}
+
+	// Safety limit: max 1000 pages (100K records)
+	if currentPage > 1000 {
+		currentPage = 1000
+	}
+
+	// Calculate OFFSET
+	offset := (currentPage - 1) * 100
+
 	// Build SQL query conditionally based on search parameter
+	// Use LIMIT 101 to check if there's a next page
 	var query string
 	var args []interface{}
 
 	if searchQuery != "" {
-		query = "SELECT container_id, container_name, timestamp, stream_type, log_message FROM logs WHERE log_message LIKE ? COLLATE NOCASE ORDER BY id DESC LIMIT 100"
-		args = append(args, "%"+searchQuery+"%")
+		query = "SELECT container_id, container_name, timestamp, stream_type, log_message FROM logs WHERE log_message LIKE ? COLLATE NOCASE ORDER BY id DESC LIMIT 101 OFFSET ?"
+		args = append(args, "%"+searchQuery+"%", offset)
 	} else {
-		query = "SELECT container_id, container_name, timestamp, stream_type, log_message FROM logs ORDER BY id DESC LIMIT 100"
+		query = "SELECT container_id, container_name, timestamp, stream_type, log_message FROM logs ORDER BY id DESC LIMIT 101 OFFSET ?"
+		args = append(args, offset)
 	}
 
 	rows, err := db.QueryContext(r.Context(), query, args...)
@@ -140,6 +161,27 @@ func serveLogsPage(w http.ResponseWriter, r *http.Request) {
 		// For now, proceed with what was scanned successfully
 	}
 
+	// Determine pagination state
+	hasNext := len(logsToDisplay) > 100
+	hasPrev := currentPage > 1
+
+	// If we got 101 results, remove the extra one for display
+	if hasNext {
+		logsToDisplay = logsToDisplay[:100]
+	}
+
+	// Build pagination URLs
+	nextPageURL := ""
+	prevPageURL := ""
+
+	if hasNext {
+		nextPageURL = buildPaginationURL(currentPage+1, searchQuery)
+	}
+
+	if hasPrev {
+		prevPageURL = buildPaginationURL(currentPage-1, searchQuery)
+	}
+
 	// Use a map for data to easily add page title or other elements if needed
 	data := map[string]interface{}{
 		"Logs":        logsToDisplay,
@@ -147,6 +189,11 @@ func serveLogsPage(w http.ResponseWriter, r *http.Request) {
 		"SearchQuery": searchQuery,
 		"ResultCount": len(logsToDisplay),
 		"HasSearch":   searchQuery != "",
+		"CurrentPage": currentPage,
+		"HasNext":     hasNext,
+		"HasPrev":     hasPrev,
+		"NextPageURL": nextPageURL,
+		"PrevPageURL": prevPageURL,
 	}
 
 	err = tmpl.ExecuteTemplate(w, "logs.html", data)
@@ -154,6 +201,15 @@ func serveLogsPage(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Failed to render page", http.StatusInternalServerError)
 	}
+}
+
+// buildPaginationURL constructs pagination URLs while preserving search parameters
+func buildPaginationURL(page int, searchQuery string) string {
+	urlStr := fmt.Sprintf("/?page=%d", page)
+	if searchQuery != "" {
+		urlStr += "&search=" + url.QueryEscape(searchQuery)
+	}
+	return urlStr
 }
 
 func main() {
