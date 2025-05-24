@@ -69,6 +69,15 @@ func initDB() error {
 		db.Close()
 		return fmt.Errorf("failed to create logs table in %s: %w", dbName, err)
 	}
+
+	// Add index on log_message for search performance
+	createIndexSQL := `CREATE INDEX IF NOT EXISTS idx_logs_message ON logs(log_message);`
+	_, err = db.Exec(createIndexSQL)
+	if err != nil {
+		db.Close()
+		return fmt.Errorf("failed to create index on log_message in %s: %w", dbName, err)
+	}
+
 	log.Printf("Database initialized at %s and logs table ensured.", dbName)
 	return nil
 }
@@ -89,7 +98,21 @@ func serveLogsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.QueryContext(r.Context(), "SELECT container_id, container_name, timestamp, stream_type, log_message FROM logs ORDER BY id DESC LIMIT 100")
+	// Get search query parameter
+	searchQuery := strings.TrimSpace(r.URL.Query().Get("search"))
+
+	// Build SQL query conditionally based on search parameter
+	var query string
+	var args []interface{}
+
+	if searchQuery != "" {
+		query = "SELECT container_id, container_name, timestamp, stream_type, log_message FROM logs WHERE log_message LIKE ? COLLATE NOCASE ORDER BY id DESC LIMIT 100"
+		args = append(args, "%"+searchQuery+"%")
+	} else {
+		query = "SELECT container_id, container_name, timestamp, stream_type, log_message FROM logs ORDER BY id DESC LIMIT 100"
+	}
+
+	rows, err := db.QueryContext(r.Context(), query, args...)
 	if err != nil {
 		log.Printf("Error querying logs from DB: %v", err)
 		http.Error(w, "Failed to retrieve logs", http.StatusInternalServerError)
@@ -119,8 +142,11 @@ func serveLogsPage(w http.ResponseWriter, r *http.Request) {
 
 	// Use a map for data to easily add page title or other elements if needed
 	data := map[string]interface{}{
-		"Logs":   logsToDisplay,
-		"DBPath": dbName, // Example of passing more data
+		"Logs":        logsToDisplay,
+		"DBPath":      dbName,
+		"SearchQuery": searchQuery,
+		"ResultCount": len(logsToDisplay),
+		"HasSearch":   searchQuery != "",
 	}
 
 	err = tmpl.ExecuteTemplate(w, "logs.html", data)

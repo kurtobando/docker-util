@@ -9,6 +9,7 @@ This Go application connects to running Docker containers, streams their logs in
 - Configurable database path via `--dbpath` flag.
 - Graceful shutdown on SIGINT/SIGTERM.
 - **Web UI to view collected logs (served on `http://localhost:9123` by default).**
+- **Search functionality for filtering log messages (case-insensitive).**
 
 ## Prerequisites
 
@@ -50,6 +51,7 @@ This Go application connects to running Docker containers, streams their logs in
     - Create/use an SQLite database file (defaults to `./docker_logs.db`).
     - Start collecting logs from all running containers.
     - **Start a web server on `http://localhost:9123`. Open this URL in your browser to view logs.**
+    - **Use the search box at the top of the page to filter log messages by text content.**
 
     **Options:**
     *   `--dbpath <path>`: Specifies the path for the SQLite database file.
