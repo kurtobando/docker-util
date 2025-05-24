@@ -11,6 +11,7 @@ This Go application connects to running Docker containers, streams their logs in
 - **Web UI to view collected logs (served on `http://localhost:9123` by default).**
 - **Search functionality for filtering log messages (case-insensitive).**
 - **Pagination support with Next/Previous navigation (100 records per page).**
+- **Dynamic container filtering with checkbox selection (automatically detects available containers).**
 
 ## Prerequisites
 
@@ -53,6 +54,8 @@ This Go application connects to running Docker containers, streams their logs in
     - Start collecting logs from all running containers.
     - **Start a web server on `http://localhost:9123`. Open this URL in your browser to view logs.**
     - **Use the search box at the top of the page to filter log messages by text content.**
+    - **Filter logs by specific containers using the checkboxes (automatically shows available containers).**
+    - **Combine search and container filtering for precise log filtering.**
     - **Navigate through log pages using the Next/Previous buttons at the bottom of the table.**
 
     **Options:**

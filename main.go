@@ -80,6 +80,14 @@ func initDB() error {
 		return fmt.Errorf("failed to create index on log_message in %s: %w", dbName, err)
 	}
 
+	// Add index on container_name for filtering performance
+	createContainerIndexSQL := `CREATE INDEX IF NOT EXISTS idx_logs_container_name ON logs(container_name);`
+	_, err = db.Exec(createContainerIndexSQL)
+	if err != nil {
+		db.Close()
+		return fmt.Errorf("failed to create index on container_name in %s: %w", dbName, err)
+	}
+
 	log.Printf("Database initialized at %s and logs table ensured.", dbName)
 	return nil
 }
@@ -94,6 +102,32 @@ func loadTemplates() error {
 	return nil
 }
 
+// getAvailableContainers fetches distinct container names from the database
+func getAvailableContainers(ctx context.Context) ([]string, error) {
+	query := "SELECT DISTINCT container_name FROM logs ORDER BY container_name"
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query container names: %w", err)
+	}
+	defer rows.Close()
+
+	var containers []string
+	for rows.Next() {
+		var containerName string
+		if err := rows.Scan(&containerName); err != nil {
+			log.Printf("Error scanning container name: %v", err)
+			continue
+		}
+		containers = append(containers, containerName)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating container names: %w", err)
+	}
+
+	return containers, nil
+}
+
 func serveLogsPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -102,6 +136,18 @@ func serveLogsPage(w http.ResponseWriter, r *http.Request) {
 
 	// Get search query parameter
 	searchQuery := strings.TrimSpace(r.URL.Query().Get("search"))
+
+	// Get container filter parameter (comma-separated)
+	containersParam := strings.TrimSpace(r.URL.Query().Get("containers"))
+	var selectedContainers []string
+	if containersParam != "" {
+		// Split by comma and trim spaces
+		for _, container := range strings.Split(containersParam, ",") {
+			if trimmed := strings.TrimSpace(container); trimmed != "" {
+				selectedContainers = append(selectedContainers, trimmed)
+			}
+		}
+	}
 
 	// Get page parameter (default to 1)
 	pageStr := r.URL.Query().Get("page")
@@ -120,18 +166,43 @@ func serveLogsPage(w http.ResponseWriter, r *http.Request) {
 	// Calculate OFFSET
 	offset := (currentPage - 1) * 100
 
-	// Build SQL query conditionally based on search parameter
+	// Get available containers dynamically
+	availableContainers, err := getAvailableContainers(r.Context())
+	if err != nil {
+		log.Printf("Error fetching available containers: %v", err)
+		http.Error(w, "Failed to load container list", http.StatusInternalServerError)
+		return
+	}
+
+	// Build SQL query conditionally based on search and container filters
 	// Use LIMIT 101 to check if there's a next page
 	var query string
 	var args []interface{}
+	var whereConditions []string
 
-	if searchQuery != "" {
-		query = "SELECT container_id, container_name, timestamp, stream_type, log_message FROM logs WHERE log_message LIKE ? COLLATE NOCASE ORDER BY id DESC LIMIT 101 OFFSET ?"
-		args = append(args, "%"+searchQuery+"%", offset)
-	} else {
-		query = "SELECT container_id, container_name, timestamp, stream_type, log_message FROM logs ORDER BY id DESC LIMIT 101 OFFSET ?"
-		args = append(args, offset)
+	// Add container filter if specified
+	if len(selectedContainers) > 0 {
+		placeholders := make([]string, len(selectedContainers))
+		for i, container := range selectedContainers {
+			placeholders[i] = "?"
+			args = append(args, container)
+		}
+		whereConditions = append(whereConditions, fmt.Sprintf("container_name IN (%s)", strings.Join(placeholders, ", ")))
 	}
+
+	// Add search filter if specified
+	if searchQuery != "" {
+		whereConditions = append(whereConditions, "log_message LIKE ? COLLATE NOCASE")
+		args = append(args, "%"+searchQuery+"%")
+	}
+
+	// Build the final query
+	query = "SELECT container_id, container_name, timestamp, stream_type, log_message FROM logs"
+	if len(whereConditions) > 0 {
+		query += " WHERE " + strings.Join(whereConditions, " AND ")
+	}
+	query += " ORDER BY id DESC LIMIT 101 OFFSET ?"
+	args = append(args, offset)
 
 	rows, err := db.QueryContext(r.Context(), query, args...)
 	if err != nil {
@@ -175,25 +246,28 @@ func serveLogsPage(w http.ResponseWriter, r *http.Request) {
 	prevPageURL := ""
 
 	if hasNext {
-		nextPageURL = buildPaginationURL(currentPage+1, searchQuery)
+		nextPageURL = buildPaginationURL(currentPage+1, searchQuery, selectedContainers)
 	}
 
 	if hasPrev {
-		prevPageURL = buildPaginationURL(currentPage-1, searchQuery)
+		prevPageURL = buildPaginationURL(currentPage-1, searchQuery, selectedContainers)
 	}
 
 	// Use a map for data to easily add page title or other elements if needed
 	data := map[string]interface{}{
-		"Logs":        logsToDisplay,
-		"DBPath":      dbName,
-		"SearchQuery": searchQuery,
-		"ResultCount": len(logsToDisplay),
-		"HasSearch":   searchQuery != "",
-		"CurrentPage": currentPage,
-		"HasNext":     hasNext,
-		"HasPrev":     hasPrev,
-		"NextPageURL": nextPageURL,
-		"PrevPageURL": prevPageURL,
+		"Logs":                logsToDisplay,
+		"DBPath":              dbName,
+		"SearchQuery":         searchQuery,
+		"ResultCount":         len(logsToDisplay),
+		"HasSearch":           searchQuery != "",
+		"CurrentPage":         currentPage,
+		"HasNext":             hasNext,
+		"HasPrev":             hasPrev,
+		"NextPageURL":         nextPageURL,
+		"PrevPageURL":         prevPageURL,
+		"AvailableContainers": availableContainers,
+		"SelectedContainers":  selectedContainers,
+		"HasContainerFilter":  len(selectedContainers) > 0,
 	}
 
 	err = tmpl.ExecuteTemplate(w, "logs.html", data)
@@ -204,10 +278,13 @@ func serveLogsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 // buildPaginationURL constructs pagination URLs while preserving search parameters
-func buildPaginationURL(page int, searchQuery string) string {
+func buildPaginationURL(page int, searchQuery string, containers []string) string {
 	urlStr := fmt.Sprintf("/?page=%d", page)
 	if searchQuery != "" {
 		urlStr += "&search=" + url.QueryEscape(searchQuery)
+	}
+	if len(containers) > 0 {
+		urlStr += "&containers=" + url.QueryEscape(strings.Join(containers, ","))
 	}
 	return urlStr
 }
