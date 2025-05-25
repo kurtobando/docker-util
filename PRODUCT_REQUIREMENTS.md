@@ -1,6 +1,6 @@
 # Product Requirements Document: docker-util Log Collector & Viewer
 
-**Version:** 2.0
+**Version:** 2.1
 **Date:** May 2025
 
 ## 1. Introduction
@@ -93,7 +93,7 @@
 -   **NFR1 (Performance):** The application should be efficient and aim to minimize overhead on the host system and Docker daemon. Database write operations should be resilient to transient errors (e.g., using retries with backoff for database writes). Search and filtering operations should be optimized using database indexes.
 -   **NFR2 (Reliability):** The application should run continuously. Log collection and web server should operate reliably. Pagination should handle large datasets efficiently.
 -   **NFR3 (Usability):** The command-line interface should be simple. The web UI should be intuitive and provide a clear view of log data with efficient search, filtering, and navigation capabilities.
--   **NFR4 (Maintainability):** The Go codebase should be well-structured and understandable.
+-   **NFR4 (Maintainability):** The Go codebase should be well-structured and understandable. ✅ **IMPLEMENTED:** Modular architecture with clean separation of concerns - application is organized into logical modules (config, models, database, docker, web, app) with single responsibilities, making it highly maintainable and testable.
 -   **NFR5 (Scalability):** The application should handle large log volumes (>1GB databases) efficiently through proper indexing and pagination limits.
 
 ## 5. UI/UX Requirements (Web Interface)
@@ -112,6 +112,13 @@
 ## 6. Technical Specifications
 
 -   **Language:** Go (version 1.24.0 or later)
+-   **Architecture:** Modular design with clean separation of concerns organized into logical packages:
+    -   `internal/config/` - Configuration management
+    -   `internal/models/` - Data structures and types
+    -   `internal/database/` - Database layer with repository pattern
+    -   `internal/docker/` - Docker API integration and log collection
+    -   `internal/web/` - HTTP server and request handling
+    -   `internal/app/` - Application orchestration and dependency injection
 -   **Key Go Libraries/Packages:**
     -   `github.com/docker/docker/client` (Docker API interaction)
     -   `database/sql`, `github.com/mattn/go-sqlite3` (SQLite database)
@@ -129,7 +136,7 @@
     -   Base: `http://localhost:9123/`
     -   With filters: `http://localhost:9123/?search=query&containers=name1,name2&page=2`
 
-## 7. Future Considerations (Out of Scope for v2.0)
+## 7. Future Considerations (Out of Scope for v2.1)
 
 -   ~~Advanced log filtering in the UI (by container name, message content, date range).~~ ✅ **IMPLEMENTED:** Container filtering and message search implemented.
 -   Advanced date range filtering and timestamp-based navigation.
