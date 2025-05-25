@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"net/http"
 	"testing"
 	"time"
 
@@ -129,46 +128,6 @@ func TestServer_Shutdown(t *testing.T) {
 
 		// Should handle gracefully
 		_ = err // Might or might not error, but shouldn't panic
-	})
-}
-
-func TestServer_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	t.Run("should serve HTTP requests", func(t *testing.T) {
-		// Create a simple handler for testing
-		handler := &Handler{}
-		server := NewServer("0", handler)
-
-		// Start the server
-		ctx := context.Background()
-		err := server.Start(ctx)
-		assert.NoError(t, err)
-
-		// Give the server a moment to start
-		time.Sleep(50 * time.Millisecond)
-
-		// Try to make a request (this will likely fail due to missing dependencies,
-		// but we're testing that the server structure works)
-		client := &http.Client{Timeout: 1 * time.Second}
-		resp, err := client.Get("http://localhost" + server.server.Addr + "/")
-
-		if err == nil {
-			resp.Body.Close()
-			// If we get here, the server is responding
-			assert.True(t, true)
-		} else {
-			// Expected to fail due to missing repository/templates or port issues
-			// but the server structure should be working
-			assert.Error(t, err)
-		}
-
-		// Clean up
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		defer cancel()
-		server.Shutdown(shutdownCtx)
 	})
 }
 

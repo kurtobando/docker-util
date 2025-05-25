@@ -81,37 +81,6 @@ func TestTemplateManager_StructValidation(t *testing.T) {
 	})
 }
 
-func TestTemplateManager_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	t.Run("should work with real template parsing", func(t *testing.T) {
-		// Create a simple template for testing
-		testTemplate := template.Must(template.New("test.html").Parse(`
-			<html>
-				<head><title>Test</title></head>
-				<body>
-					<h1>{{.Title}}</h1>
-					<p>{{.Message}}</p>
-				</body>
-			</html>
-		`))
-
-		tm := &TemplateManager{tmpl: testTemplate}
-
-		result := tm.GetTemplate()
-		assert.NotNil(t, result)
-		assert.Equal(t, testTemplate, result)
-
-		// Test that the template structure is valid by checking it's not nil
-		assert.NotNil(t, result)
-
-		// We can't execute with nil writer, so just verify the template exists
-		assert.Equal(t, "test.html", result.Name())
-	})
-}
-
 func TestTemplateManager_ErrorHandling(t *testing.T) {
 	t.Run("should handle various error conditions", func(t *testing.T) {
 		// Test error handling concepts

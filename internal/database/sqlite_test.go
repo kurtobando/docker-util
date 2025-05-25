@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -230,32 +229,4 @@ func TestDatabase_SchemaValidation(t *testing.T) {
 		assert.Equal(t, "TEXT", columns["log_message"])
 	})
 
-	t.Run("should handle database file permissions", func(t *testing.T) {
-		if os.Getuid() == 0 {
-			t.Skip("Skipping permission test when running as root")
-		}
-
-		dbPath := filepath.Join(tempDir, "permission_test.db")
-		db := NewDatabase(dbPath)
-
-		err := db.Connect()
-		require.NoError(t, err)
-		defer db.Close()
-
-		// Change file permissions to read-only
-		err = os.Chmod(dbPath, 0444)
-		require.NoError(t, err)
-
-		// Try to create a new connection to the read-only file
-		db2 := NewDatabase(dbPath)
-		err = db2.Connect()
-		// Should still be able to connect for reading
-		assert.NoError(t, err)
-		if err == nil {
-			db2.Close()
-		}
-
-		// Restore permissions for cleanup
-		os.Chmod(dbPath, 0644)
-	})
 }

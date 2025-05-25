@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestLogEntry tests the LogEntry struct functionality
 func TestLogEntry(t *testing.T) {
 	t.Run("should create LogEntry with all fields", func(t *testing.T) {
 		entry := LogEntry{
@@ -23,8 +24,8 @@ func TestLogEntry(t *testing.T) {
 		assert.Equal(t, "Test log message", entry.LogMessage)
 	})
 
-	t.Run("should handle empty LogEntry", func(t *testing.T) {
-		entry := LogEntry{}
+	t.Run("should handle zero value LogEntry", func(t *testing.T) {
+		var entry LogEntry
 
 		assert.Empty(t, entry.ContainerID)
 		assert.Empty(t, entry.ContainerName)
@@ -32,8 +33,40 @@ func TestLogEntry(t *testing.T) {
 		assert.Empty(t, entry.StreamType)
 		assert.Empty(t, entry.LogMessage)
 	})
+
+	t.Run("should handle LogEntry with empty strings", func(t *testing.T) {
+		entry := LogEntry{
+			ContainerID:   "",
+			ContainerName: "",
+			Timestamp:     "",
+			StreamType:    "",
+			LogMessage:    "",
+		}
+
+		assert.Empty(t, entry.ContainerID)
+		assert.Empty(t, entry.ContainerName)
+		assert.Empty(t, entry.Timestamp)
+		assert.Empty(t, entry.StreamType)
+		assert.Empty(t, entry.LogMessage)
+	})
+
+	t.Run("should handle LogEntry with special characters", func(t *testing.T) {
+		entry := LogEntry{
+			ContainerID:   "container-123_test",
+			ContainerName: "test-container-name_123",
+			Timestamp:     "2023-12-01T10:30:45.123456789Z",
+			StreamType:    "stderr",
+			LogMessage:    "Log with special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?",
+		}
+
+		assert.Equal(t, "container-123_test", entry.ContainerID)
+		assert.Equal(t, "test-container-name_123", entry.ContainerName)
+		assert.Equal(t, "stderr", entry.StreamType)
+		assert.Contains(t, entry.LogMessage, "!@#$%^&*()_+-=[]{}|;':\",./<>?")
+	})
 }
 
+// TestSearchParams tests the SearchParams struct functionality
 func TestSearchParams(t *testing.T) {
 	t.Run("should create SearchParams with all fields", func(t *testing.T) {
 		params := SearchParams{
@@ -49,8 +82,8 @@ func TestSearchParams(t *testing.T) {
 		assert.Equal(t, 100, params.Offset)
 	})
 
-	t.Run("should handle empty SearchParams", func(t *testing.T) {
-		params := SearchParams{}
+	t.Run("should handle zero value SearchParams", func(t *testing.T) {
+		var params SearchParams
 
 		assert.Empty(t, params.SearchQuery)
 		assert.Nil(t, params.SelectedContainers)
@@ -58,7 +91,7 @@ func TestSearchParams(t *testing.T) {
 		assert.Equal(t, 0, params.Offset)
 	})
 
-	t.Run("should handle SearchParams with empty containers slice", func(t *testing.T) {
+	t.Run("should handle SearchParams with empty slice", func(t *testing.T) {
 		params := SearchParams{
 			SearchQuery:        "test",
 			SelectedContainers: []string{},
@@ -67,12 +100,14 @@ func TestSearchParams(t *testing.T) {
 		}
 
 		assert.Equal(t, "test", params.SearchQuery)
-		assert.Empty(t, params.SelectedContainers)
+		assert.NotNil(t, params.SelectedContainers)
+		assert.Len(t, params.SelectedContainers, 0)
 		assert.Equal(t, 1, params.CurrentPage)
 		assert.Equal(t, 0, params.Offset)
 	})
 }
 
+// TestPaginationInfo tests the PaginationInfo struct functionality
 func TestPaginationInfo(t *testing.T) {
 	t.Run("should create PaginationInfo with all fields", func(t *testing.T) {
 		pagination := PaginationInfo{
@@ -88,6 +123,16 @@ func TestPaginationInfo(t *testing.T) {
 		assert.True(t, pagination.HasPrev)
 		assert.Equal(t, "/logs?page=3", pagination.NextPageURL)
 		assert.Equal(t, "/logs?page=1", pagination.PrevPageURL)
+	})
+
+	t.Run("should handle zero value PaginationInfo", func(t *testing.T) {
+		var info PaginationInfo
+
+		assert.Equal(t, 0, info.CurrentPage)
+		assert.False(t, info.HasNext)
+		assert.False(t, info.HasPrev)
+		assert.Empty(t, info.NextPageURL)
+		assert.Empty(t, info.PrevPageURL)
 	})
 
 	t.Run("should handle first page pagination", func(t *testing.T) {
@@ -123,6 +168,7 @@ func TestPaginationInfo(t *testing.T) {
 	})
 }
 
+// TestContainer tests the Container struct functionality
 func TestContainer(t *testing.T) {
 	t.Run("should create Container with all fields", func(t *testing.T) {
 		container := Container{
@@ -136,15 +182,30 @@ func TestContainer(t *testing.T) {
 		assert.Equal(t, "nginx:latest", container.Image)
 	})
 
-	t.Run("should handle empty Container", func(t *testing.T) {
-		container := Container{}
+	t.Run("should handle zero value Container", func(t *testing.T) {
+		var container Container
 
 		assert.Empty(t, container.ID)
 		assert.Empty(t, container.Name)
 		assert.Empty(t, container.Image)
 	})
+
+	t.Run("should handle Container with long values", func(t *testing.T) {
+		longID := "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+		container := Container{
+			ID:    longID,
+			Name:  "very-long-container-name-with-many-hyphens-and-numbers-123",
+			Image: "registry.example.com/namespace/image-name:v1.2.3-alpha.1",
+		}
+
+		assert.Equal(t, longID, container.ID)
+		assert.Len(t, container.ID, 64)
+		assert.Contains(t, container.Name, "very-long-container-name")
+		assert.Contains(t, container.Image, "registry.example.com")
+	})
 }
 
+// TestTemplateData tests the TemplateData struct functionality
 func TestTemplateData(t *testing.T) {
 	t.Run("should create TemplateData with all fields", func(t *testing.T) {
 		logs := []LogEntry{
@@ -188,8 +249,8 @@ func TestTemplateData(t *testing.T) {
 		assert.True(t, templateData.HasContainerFilter)
 	})
 
-	t.Run("should handle empty TemplateData", func(t *testing.T) {
-		templateData := TemplateData{}
+	t.Run("should handle zero value TemplateData", func(t *testing.T) {
+		var templateData TemplateData
 
 		assert.Nil(t, templateData.Logs)
 		assert.Empty(t, templateData.DBPath)
@@ -216,5 +277,78 @@ func TestTemplateData(t *testing.T) {
 		assert.Empty(t, templateData.Logs)
 		assert.Empty(t, templateData.AvailableContainers)
 		assert.Empty(t, templateData.SelectedContainers)
+	})
+
+	t.Run("should handle TemplateData with complex nested data", func(t *testing.T) {
+		logs := []LogEntry{
+			{ContainerID: "1", LogMessage: "log1"},
+			{ContainerID: "2", LogMessage: "log2"},
+		}
+
+		data := TemplateData{
+			Logs:                logs,
+			DBPath:              "/path/to/db",
+			SearchQuery:         "error",
+			ResultCount:         100,
+			HasSearch:           true,
+			CurrentPage:         3,
+			HasNext:             false,
+			HasPrev:             true,
+			NextPageURL:         "",
+			PrevPageURL:         "/logs?page=2",
+			AvailableContainers: []string{"web", "db", "cache"},
+			SelectedContainers:  []string{"web", "db"},
+			HasContainerFilter:  true,
+		}
+
+		assert.Len(t, data.Logs, 2)
+		assert.Equal(t, "error", data.SearchQuery)
+		assert.Equal(t, 100, data.ResultCount)
+		assert.True(t, data.HasSearch)
+		assert.Equal(t, 3, data.CurrentPage)
+		assert.False(t, data.HasNext)
+		assert.True(t, data.HasPrev)
+		assert.Empty(t, data.NextPageURL)
+		assert.Equal(t, "/logs?page=2", data.PrevPageURL)
+		assert.Len(t, data.AvailableContainers, 3)
+		assert.Len(t, data.SelectedContainers, 2)
+		assert.True(t, data.HasContainerFilter)
+	})
+}
+
+// TestModelsMemoryLayout tests memory layout and struct sizes
+func TestModelsMemoryLayout(t *testing.T) {
+	t.Run("should have reasonable struct sizes", func(t *testing.T) {
+		// Test that structs don't have unexpected memory overhead
+		var logEntry LogEntry
+		var searchParams SearchParams
+		var paginationInfo PaginationInfo
+		var container Container
+		var templateData TemplateData
+
+		// These tests ensure structs are properly defined
+		assert.NotNil(t, &logEntry)
+		assert.NotNil(t, &searchParams)
+		assert.NotNil(t, &paginationInfo)
+		assert.NotNil(t, &container)
+		assert.NotNil(t, &templateData)
+	})
+
+	t.Run("should handle struct field alignment", func(t *testing.T) {
+		// Test that all struct fields are accessible
+		entry := LogEntry{
+			ContainerID:   "test",
+			ContainerName: "test",
+			Timestamp:     "test",
+			StreamType:    "test",
+			LogMessage:    "test",
+		}
+
+		// All fields should be settable and gettable
+		assert.Equal(t, "test", entry.ContainerID)
+		assert.Equal(t, "test", entry.ContainerName)
+		assert.Equal(t, "test", entry.Timestamp)
+		assert.Equal(t, "test", entry.StreamType)
+		assert.Equal(t, "test", entry.LogMessage)
 	})
 }

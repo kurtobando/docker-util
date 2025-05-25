@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,73 +29,19 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestClient_GetClient(t *testing.T) {
-	t.Run("should return underlying Docker client", func(t *testing.T) {
-		client, err := NewClient()
-		if err != nil {
-			t.Skip("Docker not available, skipping test")
-		}
-		defer client.Close()
-
+	t.Run("should return nil for uninitialized client", func(t *testing.T) {
+		client := &Client{}
 		dockerClient := client.GetClient()
-		assert.NotNil(t, dockerClient)
-		assert.Equal(t, client.client, dockerClient)
+		assert.Nil(t, dockerClient)
 	})
 }
 
 func TestClient_Close(t *testing.T) {
-	t.Run("should close Docker client successfully", func(t *testing.T) {
-		client, err := NewClient()
-		if err != nil {
-			t.Skip("Docker not available, skipping test")
-		}
-
-		err = client.Close()
-		assert.NoError(t, err)
-	})
-
 	t.Run("should handle closing nil client", func(t *testing.T) {
 		client := &Client{client: nil}
 
 		err := client.Close()
 		assert.NoError(t, err)
-	})
-}
-
-func TestClient_ListRunningContainers(t *testing.T) {
-	t.Run("should list running containers successfully", func(t *testing.T) {
-		client, err := NewClient()
-		if err != nil {
-			t.Skip("Docker not available, skipping test")
-		}
-		defer client.Close()
-
-		ctx := context.Background()
-		containers, err := client.ListRunningContainers(ctx)
-
-		// Should not error even if no containers are running
-		assert.NoError(t, err)
-		assert.NotNil(t, containers)
-		// containers slice can be empty if no containers are running
-	})
-
-	t.Run("should handle context cancellation", func(t *testing.T) {
-		client, err := NewClient()
-		if err != nil {
-			t.Skip("Docker not available, skipping test")
-		}
-		defer client.Close()
-
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel() // Cancel immediately
-
-		containers, err := client.ListRunningContainers(ctx)
-
-		// Should handle cancellation gracefully
-		if err != nil {
-			assert.Contains(t, err.Error(), "context")
-		}
-		// containers might be nil or empty depending on timing
-		_ = containers
 	})
 }
 

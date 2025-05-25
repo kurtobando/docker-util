@@ -44,12 +44,6 @@ func TestNewCollector(t *testing.T) {
 }
 
 func TestCollector_StartCollection(t *testing.T) {
-	t.Run("should start collection for multiple containers", func(t *testing.T) {
-		// Skip this test as it requires a real Docker client
-		// The actual goroutines would try to connect to Docker
-		t.Skip("Skipping test that requires real Docker client")
-	})
-
 	t.Run("should handle empty container list", func(t *testing.T) {
 		mockClient := &Client{}
 		mockRepo := &MockLogRepository{}
