@@ -13,6 +13,8 @@ This Go application connects to running Docker containers, streams their logs in
 - **Pagination support with Next/Previous navigation (100 records per page).**
 - **Dynamic container filtering with checkbox selection (automatically detects available containers).**
 - **Modular, maintainable codebase with clean separation of concerns.**
+- **Comprehensive unit testing with 55%+ code coverage.**
+- **Professional build system with Makefile for development workflow.**
 
 ## Prerequisites
 
@@ -29,8 +31,13 @@ This Go application connects to running Docker containers, streams their logs in
 
 2.  **Build and run:**
     ```bash
-    go build -o docker-util
+    make build
     ./docker-util
+    ```
+    
+    Or run directly:
+    ```bash
+    make run
     ```
     
     That's it! The application will:
@@ -57,27 +64,108 @@ This Go application connects to running Docker containers, streams their logs in
 *   `--port <port_number>`: Specifies the port for the web UI (defaults to 9123).
     Example: `./docker-util --port 8888`
 
+## Development
+
+**Prerequisites:**
+- Ensure Docker daemon is accessible
+- Go 1.24.0 or higher
+
+**Available Make Targets:**
+```bash
+make help                 # Show all available targets
+make test                 # Run unit tests
+make test-coverage        # Run tests with coverage report
+make test-coverage-open   # Run coverage and open report in browser
+make test-race            # Run tests with race detection
+make test-verbose         # Run tests with verbose output
+make build                # Build the application
+make run                  # Run the application
+make clean-coverage       # Clean coverage files
+```
+
+**Development Workflow:**
+```bash
+# Run tests during development
+make test
+
+# Check test coverage
+make test-coverage
+
+# Build for testing
+make build
+
+# Run in development mode
+make run
+```
+
+**Testing:**
+The project includes comprehensive unit tests with 55%+ code coverage:
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage report
+make test-coverage
+
+# Run tests for specific package
+make test-package PKG=internal/app
+
+# Run tests with race detection
+make test-race
+```
+
 ## Architecture
 
-The application follows a clean, modular architecture:
+The application follows a clean, modular architecture with comprehensive testing:
 
 ```
 bw-util/
-├── main.go                      # Application entry point
+├── main.go                      # Application entry point (26 lines)
+├── main_test.go                 # Main package tests
+├── Makefile                     # Build system and development workflow
 ├── internal/
 │   ├── app/                     # Application orchestration
+│   │   ├── app.go              # App struct with Initialize/Run methods
+│   │   └── app_test.go         # App constructor & validation tests
 │   ├── config/                  # Configuration management
+│   │   ├── config.go           # Command-line flag parsing
+│   │   └── config_test.go      # Config tests (100% coverage)
 │   ├── models/                  # Data structures
+│   │   ├── log.go              # LogEntry and SearchParams models
+│   │   └── models_test.go      # Model validation tests
 │   ├── database/                # Database layer (SQLite + repository)
-│   ├── docker/                  # Docker integration (client, collector, parser)
-│   └── web/                     # Web interface (server, handlers, templates)
+│   │   ├── sqlite.go           # Database connection and schema
+│   │   ├── repository.go       # Data access layer
+│   │   ├── sqlite_test.go      # Database tests
+│   │   └── repository_test.go  # Repository tests (76% coverage)
+│   ├── docker/                  # Docker integration
+│   │   ├── client.go           # Docker API client
+│   │   ├── collector.go        # Log collection orchestration
+│   │   ├── parser.go           # Log parsing and timestamp handling
+│   │   ├── client_test.go      # Docker client tests
+│   │   ├── collector_test.go   # Collector tests
+│   │   └── parser_test.go      # Parser tests (23% coverage)
+│   ├── web/                     # Web interface
+│   │   ├── server.go           # HTTP server with graceful shutdown
+│   │   ├── handlers.go         # Request handlers and pagination
+│   │   ├── templates.go        # Template management
+│   │   ├── server_test.go      # Server tests
+│   │   ├── handlers_test.go    # Handler tests (93% coverage)
+│   │   └── templates_test.go   # Template tests
+│   └── testutil/                # Testing utilities
+│       ├── mocks.go            # Mock implementations
+│       ├── fixtures.go         # Test data fixtures
+│       ├── database.go         # Test database helpers
+│       └── *_test.go           # Test utility tests (73% coverage)
 ├── templates/                   # HTML templates (embedded)
+│   └── logs.html               # Main web interface template
 └── go.mod                       # Dependencies
 ```
 
 **Benefits:**
-- **Maintainable**: Each module has a single responsibility
-- **Testable**: Components can be unit tested independently  
+- **Maintainable**: Each module has a single responsibility with comprehensive tests
+- **Testable**: 55%+ code coverage with unit tests for all components
+- **Reliable**: Professional build system with race detection and coverage reporting
 - **Extensible**: Easy to add new features without affecting existing code
 - **Readable**: Clear separation of concerns makes the code easy to understand
 
@@ -92,21 +180,42 @@ The logs are stored in a table named `logs` with the following schema:
 -   `stream_type` (TEXT) - "stdout" or "stderr"
 -   `log_message` (TEXT) - The actual log content
 
-## Development
+**Performance Indexes:**
+- `idx_logs_message` - Optimizes search functionality
+- `idx_logs_container_name` - Optimizes container filtering
 
-**Prerequisites:**
-- Ensure Docker daemon is accessible
-- Go 1.24.0 or higher
+## Testing
 
-**Run in development mode:**
+The project maintains high code quality through comprehensive testing:
+
+**Test Coverage by Module:**
+- `internal/config`: 100% coverage
+- `internal/web`: 93% coverage  
+- `internal/database`: 76% coverage
+- `internal/testutil`: 73% coverage
+- `internal/docker`: 23% coverage
+- **Overall**: 55%+ coverage
+
+**Test Types:**
+- **Unit Tests**: Test individual functions and methods in isolation
+- **Integration Tests**: Test component interactions with mocked dependencies
+- **Validation Tests**: Test struct validation and error handling
+- **Mock Tests**: Use comprehensive mock system for external dependencies
+
+**Running Tests:**
 ```bash
-go run main.go [--dbpath ./dev.db] [--port 8081]
-```
+# Basic test run
+make test
 
-**Build for production:**
-```bash
-go build -o docker-util
-```
+# With coverage report
+make test-coverage
 
-**Project Structure:**
-The codebase is organized into logical modules under `internal/` for better maintainability and testing. Each module handles a specific aspect of the application (configuration, database, Docker integration, web interface, etc.). 
+# With race detection
+make test-race
+
+# Verbose output
+make test-verbose
+
+# Open coverage report in browser
+make test-coverage-open
+``` 
