@@ -113,10 +113,7 @@ func (r *Repository) Search(ctx context.Context, params *models.SearchParams) ([
 			// Skip this row and continue (same as original)
 			continue
 		}
-		// Truncate long container IDs for display (same as original)
-		if len(entry.ContainerID) > 12 {
-			entry.ContainerID = entry.ContainerID[:12]
-		}
+		// Keep full container ID for display
 		logs = append(logs, entry)
 	}
 	if err = rows.Err(); err != nil {

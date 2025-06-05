@@ -319,8 +319,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Timestamp</th>
-                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Container Name</th>
-                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Container</th>
                         <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stream</th>
                         <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
                     </tr>
@@ -328,9 +327,23 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     {{range .Logs}}
                     <tr>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{.Timestamp}}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-medium">{{.ContainerName}}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 font-mono">{{.ContainerID}}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" title="{{.Timestamp}}">
+                            {{if .Timestamp}}
+                                {{slice .Timestamp 11 19}}
+                            {{else}}
+                                {{.Timestamp}}
+                            {{end}}
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <div class="text-gray-700 font-medium">{{.ContainerName}}</div>
+                            <div class="text-gray-500 font-mono text-xs" title="{{.ContainerID}}">
+                                {{if gt (len .ContainerID) 12}}
+                                    {{slice .ContainerID 0 12}}
+                                {{else}}
+                                    {{.ContainerID}}
+                                {{end}}
+                            </div>
+                        </td>
                         <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                 {{if eq .StreamType "stdout"}} bg-blue-100 text-blue-800 
@@ -345,7 +358,7 @@
                     </tr>
                     {{else}}
                     <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-sm text-gray-500">
+                        <td colspan="4" class="px-6 py-12 text-center text-sm text-gray-500">
                             No logs found or database is empty.
                         </td>
                     </tr>
