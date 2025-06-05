@@ -70,7 +70,154 @@
                     }
                 });
             }
+
+            setupJsonLogToggleButtons();
         });
+
+        function repairMalformedNestedJson(jsonString) {
+            try {
+                JSON.parse(jsonString);
+                return jsonString;
+            } catch (e) {
+                let repairedString = jsonString;
+                
+                const nestedJsonMatch = repairedString.match(/"info":"(\{.*\})"/);
+                if (nestedJsonMatch) {
+                    const fullMatchText = nestedJsonMatch[0];
+                    const innerJsonContent = nestedJsonMatch[1];
+                    
+                    const escapedInnerJson = innerJsonContent.replace(/"/g, '\\"');
+                    const replacementText = `"info":"${escapedInnerJson}"`;
+                    
+                    repairedString = repairedString.replace(fullMatchText, replacementText);
+                }
+                
+                return repairedString;
+            }
+        }
+
+        function validateJsonString(rawString) {
+            try {
+                const htmlDecodedString = rawString.replace(/&quot;/g, '"')
+                                 .replace(/&amp;/g, '&')
+                                 .replace(/&lt;/g, '<')
+                                 .replace(/&gt;/g, '>')
+                                 .replace(/&#x27;/g, "'")
+                                 .replace(/&#x2F;/g, '/');
+                
+                const repairedJsonString = repairMalformedNestedJson(htmlDecodedString);
+                
+                const parsedObject = JSON.parse(repairedJsonString);
+                const isValidJsonObject = (typeof parsedObject === 'object' && parsedObject !== null);
+                return isValidJsonObject;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function expandNestedJsonStrings(jsonObject) {
+            if (typeof jsonObject !== 'object' || jsonObject === null) {
+                return jsonObject;
+            }
+            
+            if (Array.isArray(jsonObject)) {
+                return jsonObject.map(item => expandNestedJsonStrings(item));
+            }
+            
+            const expandedObject = {};
+            for (const [fieldName, fieldValue] of Object.entries(jsonObject)) {
+                if (typeof fieldValue === 'string') {
+                    try {
+                        if ((fieldValue.startsWith('{') && fieldValue.endsWith('}')) || 
+                            (fieldValue.startsWith('[') && fieldValue.endsWith(']'))) {
+                            const parsedNestedJson = JSON.parse(fieldValue);
+                            expandedObject[fieldName] = expandNestedJsonStrings(parsedNestedJson);
+                        } else {
+                            expandedObject[fieldName] = fieldValue;
+                        }
+                    } catch (e) {
+                        expandedObject[fieldName] = `⚠️ PARSE ERROR: ${fieldValue}`;
+                    }
+                } else if (typeof fieldValue === 'object') {
+                    expandedObject[fieldName] = expandNestedJsonStrings(fieldValue);
+                } else {
+                    expandedObject[fieldName] = fieldValue;
+                }
+            }
+            return expandedObject;
+        }
+
+        function formatJsonWithSyntaxHighlighting(rawJsonString) {
+            try {
+                const htmlDecodedString = rawJsonString.replace(/&quot;/g, '"')
+                                      .replace(/&amp;/g, '&')
+                                      .replace(/&lt;/g, '<')
+                                      .replace(/&gt;/g, '>')
+                                      .replace(/&#x27;/g, "'")
+                                      .replace(/&#x2F;/g, '/');
+                
+                const repairedJsonString = repairMalformedNestedJson(htmlDecodedString);
+                
+                const parsedJsonObject = JSON.parse(repairedJsonString);
+                
+                const fullyExpandedObject = expandNestedJsonStrings(parsedJsonObject);
+                
+                const prettyFormattedJson = JSON.stringify(fullyExpandedObject, null, 2);
+                
+                const syntaxHighlightedJson = prettyFormattedJson
+                    .replace(/("([^"\\]|\\.)*")(\s*:)/g, '<span class="text-blue-600 font-medium">$1</span>$3')
+                    .replace(/:\s*("([^"\\]|\\.)*")/g, ': <span class="text-green-600">$1</span>')
+                    .replace(/:\s*([0-9]+\.?[0-9]*)/g, ': <span class="text-green-600">$1</span>')
+                    .replace(/:\s*(true|false|null)/g, ': <span class="text-green-600">$1</span>');
+                
+                return syntaxHighlightedJson;
+            } catch (e) {
+                return rawJsonString;
+            }
+        }
+
+        function toggleExpandedJsonVisibility(toggleButton, logEntryId) {
+            const expandedJsonContainer = document.getElementById(`json-expanded-${logEntryId}`);
+            const isCurrentlyExpanded = expandedJsonContainer.style.display !== 'none';
+            
+            if (isCurrentlyExpanded) {
+                expandedJsonContainer.style.display = 'none';
+                toggleButton.textContent = 'Show Log';
+                toggleButton.className = toggleButton.className.replace('bg-red-600 hover:bg-red-700', 'bg-blue-600 hover:bg-blue-700');
+            } else {
+                expandedJsonContainer.style.display = 'block';
+                toggleButton.textContent = 'Hide Log';
+                toggleButton.className = toggleButton.className.replace('bg-blue-600 hover:bg-blue-700', 'bg-red-600 hover:bg-red-700');
+            }
+        }
+
+        function setupJsonLogToggleButtons() {
+            const allLogMessageCells = document.querySelectorAll('.log-message-cell');
+            
+            allLogMessageCells.forEach((logMessageCell, cellIndex) => {
+                const rawLogMessage = logMessageCell.getAttribute('data-log-message');
+                
+                if (validateJsonString(rawLogMessage)) {
+                    const uniqueLogId = `log-${cellIndex}`;
+                    const highlightedFormattedJson = formatJsonWithSyntaxHighlighting(rawLogMessage);
+                    
+                    const showHideToggleButton = document.createElement('button');
+                    showHideToggleButton.className = 'mb-2 px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition duration-200';
+                    showHideToggleButton.textContent = 'Show Log';
+                    showHideToggleButton.onclick = function() { toggleExpandedJsonVisibility(this, uniqueLogId); };
+                    
+                    const expandedJsonDisplayContainer = document.createElement('div');
+                    expandedJsonDisplayContainer.id = `json-expanded-${uniqueLogId}`;
+                    expandedJsonDisplayContainer.className = 'mt-2 p-3 bg-gray-900 text-gray-100 rounded-md overflow-x-auto';
+                    expandedJsonDisplayContainer.style.display = 'none';
+                    expandedJsonDisplayContainer.innerHTML = `<pre class="text-sm whitespace-pre-wrap">${highlightedFormattedJson}</pre>`;
+                    
+                    const originalLogMessageDiv = logMessageCell.querySelector('div');
+                    originalLogMessageDiv.insertAdjacentElement('afterend', showHideToggleButton);
+                    showHideToggleButton.insertAdjacentElement('afterend', expandedJsonDisplayContainer);
+                }
+            });
+        }
     </script>
 </head>
 <body class="bg-gray-100 text-gray-800 antialiased min-h-screen">
@@ -191,7 +338,9 @@
                                 {{.StreamType}}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap break-all">{{.LogMessage}}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700 log-message-cell" data-log-message="{{.LogMessage}}">
+                            <div class="whitespace-pre-wrap break-all">{{.LogMessage}}</div>
+                        </td>
                     </tr>
                     {{else}}
                     <tr>
